@@ -4,8 +4,8 @@ possible.
 
 ## Our Development Process
 This project is developed in the open on GitHub. Changes are made directly via
-pull requests. The `docs/` folder contains the self-contained static site that
-is deployed to GitHub Pages.
+pull requests. The app files (`index.html`, `app.js`, `style.css`) live at the
+repo root and are deployed to GitHub Pages.
 
 ## Pull Requests
 We actively welcome your pull requests.

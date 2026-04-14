@@ -2,9 +2,9 @@
 
 A comprehensive, interactive demo of the [Mapillary](https://www.mapillary.com/) API — built entirely through **vibecoding** with [Manus](https://manus.im). No frameworks, no build step: just vanilla HTML, CSS, and JavaScript.
 
-**[Live Demo](https://mapillary.github.io/api-demo/)**
+**[Live Demo](https://github.com/mapillary/api-demo)**
 
-![Screenshot](docs/screenshot.jpg)
+![Screenshot](screenshot.jpg)
 
 ---
 
@@ -45,15 +45,15 @@ The app itself includes a number of UI and interaction features beyond the raw A
 
 ### Use the Live Demo
 
-Visit **[https://mapillary.github.io/api-demo](https://mapillary.github.io/api-demo)** — the app loads with a default access token and is ready to use immediately.
+Visit **[github.com/mapillary/api-demo](https://github.com/mapillary/api-demo)** — the app loads with a default access token and is ready to use immediately.
 
 ### Run Locally
 
-Clone the repo and open `docs/index.html` in a browser, or serve it with any static file server:
+Clone the repo and open `index.html` in a browser, or serve it with any static file server:
 
 ```bash
 git clone https://github.com/mapillary/api-demo.git
-cd api-demo/docs
+cd api-demo
 python3 -m http.server 8000
 ```
 
