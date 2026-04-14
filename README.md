@@ -45,7 +45,7 @@ The app itself includes a number of UI and interaction features beyond the raw A
 
 ### Use the Live Demo
 
-Visit **[cuddly-adventure-1qe3yzp.pages.github.io](https://cuddly-adventure-1qe3yzp.pages.github.io/)** — the app loads with a default access token and is ready to use immediately.
+Visit **[https://mapillary.github.io/api-demo](https://mapillary.github.io/api-demo)** — the app loads with a default access token and is ready to use immediately.
 
 ### Run Locally
 
