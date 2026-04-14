@@ -2,9 +2,9 @@
 
 A comprehensive, interactive demo of the [Mapillary](https://www.mapillary.com/) API — built entirely through **vibecoding** with [Manus](https://manus.im). No frameworks, no build step: just vanilla HTML, CSS, and JavaScript.
 
-**[Live Demo](https://cuddly-adventure-1qe3yzp.pages.github.io/)**
+**[Live Demo](https://github.com/mapillary/api-demo)**
 
-![Screenshot](docs/screenshot.jpg)
+![Screenshot](screenshot.jpg)
 
 ---
 
@@ -45,7 +45,7 @@ The app itself includes a number of UI and interaction features beyond the raw A
 
 ### Use the Live Demo
 
-Visit **[cuddly-adventure-1qe3yzp.pages.github.io](https://cuddly-adventure-1qe3yzp.pages.github.io/)** — the app loads with a default access token and is ready to use immediately.
+Visit **[https://github.com/mapillary/api-demo](https://github.com/mapillary/api-demo)** — the app loads with a default access token and is ready to use immediately.
 
 ### Run Locally
 
