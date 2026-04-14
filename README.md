@@ -2,7 +2,7 @@
 
 A comprehensive, interactive demo of the [Mapillary](https://www.mapillary.com/) API — built entirely through **vibecoding** with [Manus](https://manus.im). No frameworks, no build step: just vanilla HTML, CSS, and JavaScript.
 
-**[Live Demo](https://cuddly-adventure-1qe3yzp.pages.github.io/)**
+**[Live Demo](https://mapillary.github.io/api-demo/)**
 
 ![Screenshot](docs/screenshot.jpg)
 
