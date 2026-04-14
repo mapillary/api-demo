@@ -1,0 +1,231 @@
+<!--
+  Copyright (c) Meta Platforms, Inc. and affiliates.
+
+  This source code is licensed under the MIT license found in the
+  LICENSE file in the root directory of this source tree.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mapillary API Demo</title>
+
+  <!-- MapLibre GL JS -->
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+
+  <!-- MapillaryJS -->
+  <link href="https://unpkg.com/mapillary-js@4.1.2/dist/mapillary.css" rel="stylesheet" />
+  <script src="https://unpkg.com/mapillary-js@4.1.2/dist/mapillary.js"></script>
+
+  <!-- Flatpickr date picker -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css" />
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div id="app">
+
+    <!-- ── Header ──────────────────────────────────────────────────────────── -->
+    <header id="header">
+      <div id="header-left">
+        <img id="logo-icon" src="logo_green.svg" alt="Mapillary" />
+        <span id="logo-text">Mapillary API Demo</span>
+      </div>
+
+      <div id="header-right">
+        <div id="token-group" class="collapsed">
+          <button id="token-toggle-btn">Change access token</button>
+          <label for="token-input" class="sr-only">Access Token</label>
+          <input
+            id="token-input"
+            type="password"
+            placeholder="Paste your Mapillary access token…"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button id="token-apply-btn">Apply</button>
+          <button id="token-cancel-btn">Cancel</button>
+        </div>
+        <a href="https://www.mapillary.com/terms" target="_blank" rel="noopener noreferrer" id="terms-link">Terms of Use</a>
+        <div id="status-indicator" aria-live="polite">
+          <span id="status-dot" class="dot dot-idle"></span>
+          <span id="status-text">Enter token to begin</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- ── Main content: map | viewer ──────────────────────────────────────── -->
+    <main id="main-content">
+
+      <!-- Map panel -->
+      <section id="map-panel" aria-label="Map">
+        <div id="map-container"></div>
+
+        <!-- Geocoder search bar -->
+        <div id="geocoder-wrap" aria-label="Search location">
+          <div id="geocoder-box">
+            <svg id="geocoder-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.8"/>
+              <line x1="12.5" y1="12.5" x2="17" y2="17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+            <input
+              id="geocoder-input"
+              type="text"
+              placeholder="Search for a place…"
+              autocomplete="off"
+              spellcheck="false"
+              aria-label="Search for a place"
+              aria-autocomplete="list"
+              aria-controls="geocoder-suggestions"
+            />
+            <button id="geocoder-clear" title="Clear" aria-label="Clear search" class="hidden">&#x2715;</button>
+          </div>
+          <ul id="geocoder-suggestions" role="listbox" aria-label="Suggestions"></ul>
+        </div>
+
+        <!-- Map layer toggles toolbar -->
+        <div id="map-toolbar" aria-label="Layer toggles">
+          <span class="toolbar-label">Layers</span>
+          <button class="layer-toggle" id="toggle-points" data-active="false" title="Toggle map feature points">
+            <span class="toggle-dot points-dot"></span> Map Features
+          </button>
+          <button class="layer-toggle" id="toggle-signs" data-active="false" title="Toggle traffic sign tiles">
+            <span class="toggle-dot signs-dot"></span> Traffic Signs
+          </button>
+          <span class="toolbar-sep"></span>
+          <button class="layer-toggle" id="filters-toggle-btn" data-active="false" title="Filter images">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="margin-right:4px;vertical-align:middle"><path d="M1 3h14v1.5L9.5 9v5l-3-1.5V9L1 4.5V3z"/></svg>
+            Filters
+          </button>
+        </div>
+
+        <!-- Filters panel (dropdown) -->
+        <div id="filters-panel" aria-label="Image filters">
+          <div class="filters-grid">
+            <label class="filter-label" for="filter-start-date">From date</label>
+            <input class="filter-input" id="filter-start-date" type="text" placeholder="Pick start date" readonly />
+            <label class="filter-label" for="filter-end-date">To date</label>
+            <input class="filter-input" id="filter-end-date" type="text" placeholder="Pick end date" readonly />
+            <label class="filter-label filter-pano-label" for="filter-pano-only">360° only</label>
+            <div class="filter-pano-wrap">
+              <input id="filter-pano-only" type="checkbox" />
+            </div>
+          </div>
+          <div class="filters-actions">
+            <button id="filter-reset-btn" class="filter-btn filter-btn-reset">Reset</button>
+            <button id="filter-apply-btn" class="filter-btn filter-btn-apply">Apply Filters</button>
+          </div>
+        </div>
+
+        <div id="map-overlay" aria-hidden="true">
+          <div id="zoom-hint">Zoom in to see Mapillary coverage</div>
+        </div>
+      </section>
+
+      <!-- Drag-to-resize divider -->
+      <div id="divider" title="Drag to resize" role="separator" aria-orientation="vertical"></div>
+
+      <!-- Viewer panel -->
+      <section id="viewer-panel" aria-label="Street-level viewer">
+
+        <!-- Shown before any image is selected -->
+        <div id="viewer-placeholder">
+          <div id="placeholder-content">
+            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <rect x="4" y="12" width="56" height="40" rx="6" stroke="#05CB63" stroke-width="2.5"/>
+              <circle cx="32" cy="32" r="10" stroke="#05CB63" stroke-width="2.5"/>
+              <circle cx="32" cy="32" r="4" fill="#05CB63"/>
+              <circle cx="50" cy="18" r="3" fill="#05CB63"/>
+            </svg>
+            <p>Click a <strong>green</strong> sequence or image point on the map to open street-level imagery here.</p>
+          </div>
+        </div>
+
+        <!-- Tab bar -->
+        <div id="viewer-tabs" class="hidden">
+          <button class="viewer-tab active" data-tab="viewer">Viewer</button>
+          <button class="viewer-tab" data-tab="info">Image Info</button>
+          <button class="viewer-tab" data-tab="detections">Detections</button>
+          <button class="viewer-tab" data-tab="sequence">Sequence</button>
+        </div>
+
+        <!-- Tab panels -->
+        <div id="tab-viewer" class="tab-panel active">
+          <!-- MapillaryJS mounts here -->
+          <div id="mly-container"></div>
+        </div>
+
+        <div id="tab-info" class="tab-panel">
+          <div class="tab-scroll">
+            <div class="api-section-header">
+              <span class="api-badge badge-blue">GET</span>
+              <code class="api-url-display" id="info-api-url">graph.mapillary.com/{image_id}</code>
+            </div>
+            <div id="info-content" class="data-grid">
+              <div class="data-placeholder">Select an image to see its metadata</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-detections" class="tab-panel">
+          <div class="tab-scroll">
+            <div class="api-section-header">
+              <span class="api-badge badge-blue">GET</span>
+              <code class="api-url-display" id="detections-api-url">graph.mapillary.com/{image_id}/detections</code>
+            </div>
+            <div id="detections-content" class="detection-list">
+              <div class="data-placeholder">Select an image to see its detections</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-sequence" class="tab-panel">
+          <div class="tab-scroll">
+            <div class="api-section-header">
+              <span class="api-badge badge-blue">GET</span>
+              <code class="api-url-display" id="sequence-api-url">graph.mapillary.com/image_ids?sequence_id=…</code>
+            </div>
+            <div id="sequence-content" class="sequence-grid">
+              <div class="data-placeholder">Select an image to see its sequence</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Info bar shown when an image is active -->
+        <div id="viewer-info-bar" class="hidden">
+          <span id="viewer-attribution"></span>
+          <button id="viewer-close-btn" title="Close viewer" aria-label="Close viewer">&#x2715;</button>
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- ── API Console Drawer ──────────────────────────────────────────────── -->
+    <div id="api-console">
+      <div id="console-header">
+        <div id="console-header-left">
+          <span id="console-title">API Console</span>
+          <span id="console-call-count" class="console-badge">0 calls</span>
+        </div>
+        <div id="console-header-right">
+          <button id="console-clear-btn" title="Clear console">Clear</button>
+          <button id="console-toggle-btn" title="Toggle console" aria-expanded="false">&#x25B2;</button>
+        </div>
+      </div>
+      <div id="console-body">
+        <div id="console-empty">No API calls yet — interact with the map to see live requests</div>
+        <div id="console-entries"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
