@@ -342,6 +342,105 @@ function applyToken() {
   initMap();
 }
 
+// ─── URL Query State Management ──────────────────────────────────────────────
+
+function updateUrlFromState() {
+  const params = new URLSearchParams(window.location.search);
+
+  if (activeFilters.startDate) {
+    params.set('startDate', activeFilters.startDate);
+  } else {
+    params.delete('startDate');
+  }
+
+  if (activeFilters.endDate) {
+    params.set('endDate', activeFilters.endDate);
+  } else {
+    params.delete('endDate');
+  }
+
+  if (activeFilters.panoOnly) {
+    params.set('panoOnly', 'true');
+  } else {
+    params.delete('panoOnly');
+  }
+
+  if (layerState.points) {
+    params.set('points', 'true');
+  } else {
+    params.delete('points');
+  }
+
+  if (layerState.signs) {
+    params.set('signs', 'true');
+  } else {
+    params.delete('signs');
+  }
+
+  const token = params.get('token');
+  if (!token || token === DEFAULT_TOKEN) {
+    params.delete('token');
+  }
+
+  const queryString = params.toString();
+  const newUrl = queryString
+    ? window.location.pathname + '?' + queryString + window.location.hash
+    : window.location.pathname + window.location.hash;
+
+  if (newUrl !== window.location.pathname + window.location.search + window.location.hash) {
+    history.replaceState(null, '', newUrl);
+  }
+}
+
+function restoreFiltersFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+
+  const startDate = params.get('startDate');
+  const endDate = params.get('endDate');
+  const panoOnly = params.get('panoOnly') === 'true';
+
+  activeFilters.startDate = startDate || '';
+  activeFilters.endDate = endDate || '';
+  activeFilters.panoOnly = panoOnly;
+
+  const panoCheckbox = document.getElementById('filter-pano-only');
+  if (panoCheckbox) panoCheckbox.checked = panoOnly;
+}
+
+function restoreLayerStateFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+
+  const points = params.get('points') === 'true';
+  const signs = params.get('signs') === 'true';
+
+  layerState.points = points;
+  layerState.signs = signs;
+
+  const btnPoints = document.getElementById('toggle-points');
+  const btnSigns = document.getElementById('toggle-signs');
+
+  if (btnPoints) btnPoints.dataset.active = String(points);
+  if (btnSigns) btnSigns.dataset.active = String(signs);
+
+  if (points && map) addExtraLayer('points');
+  if (signs && map) addExtraLayer('signs');
+}
+
+function updateDatePickersFromFilters() {
+  if (fpStart && activeFilters.startDate) {
+    fpStart.setDate(activeFilters.startDate, false);
+  }
+  if (fpEnd && activeFilters.endDate) {
+    fpEnd.setDate(activeFilters.endDate, false);
+  }
+  if (fpStart && activeFilters.endDate) {
+    fpStart.set('maxDate', activeFilters.endDate);
+  }
+  if (fpEnd && activeFilters.startDate) {
+    fpEnd.set('minDate', activeFilters.startDate);
+  }
+}
+
 // Auto-load with default token on startup
 document.addEventListener('DOMContentLoaded', () => {
   const urlToken = new URLSearchParams(window.location.search).get('token');
@@ -349,6 +448,9 @@ document.addEventListener('DOMContentLoaded', () => {
     tokenInput.value = urlToken;
     accessToken = urlToken;
   }
+
+  restoreFiltersFromUrl();
+
   initTabs();
   initMap();
 });
@@ -501,6 +603,8 @@ function onMapLoad() {
   bindMapEvents();
   bindLayerToggles();
   applyFiltersToLayers();
+  updateFiltersActiveState();
+  restoreLayerStateFromUrl();
   setStatus('ok', 'Map ready — click a green layer');
 }
 
@@ -586,6 +690,8 @@ function initDatePickers() {
       if (fpStart) fpStart.set('maxDate', dateStr || 'today');
     },
   });
+
+  updateDatePickersFromFilters();
 }
 
 function bindLayerToggles() {
@@ -608,6 +714,7 @@ function bindLayerToggles() {
       activeFilters.panoOnly  = document.getElementById('filter-pano-only').checked;
       applyFiltersToLayers();
       updateFiltersActiveState();
+      updateUrlFromState();
       filtersPanel.classList.remove('open');
       filtersToggle.dataset.active = 'false';
     });
@@ -620,6 +727,7 @@ function bindLayerToggles() {
       document.getElementById('filter-pano-only').checked = false;
       applyFiltersToLayers();
       updateFiltersActiveState();
+      updateUrlFromState();
       filtersPanel.classList.remove('open');
       filtersToggle.dataset.active = 'false';
     });
@@ -636,6 +744,8 @@ function toggleLayer(name) {
   } else {
     removeExtraLayer(name);
   }
+
+  updateUrlFromState();
 }
 
 function addExtraLayer(name) {
