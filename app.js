@@ -338,8 +338,240 @@ function applyToken() {
   accessToken = val;
   tokenGroup.classList.add('collapsed');
   tokenInput.value = '';
+
+  TokenState.prepareTokenUpdate({
+    thumbCache: thumbCache,
+    layerState: layerState,
+    getElementById: document.getElementById.bind(document),
+  });
+  loadedAttributionId = null;
+  activeImageId = null;
+
   if (viewer) { viewer.remove(); viewer = null; }
   initMap();
+}
+
+// ─── UrlState: URL Query State Serialization/Deserialization ─────────────────
+// 抽离为可测试的纯函数，不依赖 DOM 或全局状态
+
+const UrlState = (function () {
+
+  function serializeFilters(filters) {
+    const params = {};
+    if (filters.startDate) params.startDate = filters.startDate;
+    if (filters.endDate) params.endDate = filters.endDate;
+    if (filters.panoOnly) params.panoOnly = 'true';
+    return params;
+  }
+
+  function serializeLayerState(state) {
+    const params = {};
+    if (state.points) params.points = 'true';
+    if (state.signs) params.signs = 'true';
+    return params;
+  }
+
+  function buildQueryString(filters, layerState, options) {
+    const params = new URLSearchParams();
+
+    if (filters) {
+      const filterParams = serializeFilters(filters);
+      Object.keys(filterParams).forEach(k => params.set(k, filterParams[k]));
+    }
+
+    if (layerState) {
+      const layerParams = serializeLayerState(layerState);
+      Object.keys(layerParams).forEach(k => params.set(k, layerParams[k]));
+    }
+
+    if (options && options.token && options.token !== options.defaultToken) {
+      params.set('token', options.token);
+    }
+
+    return params.toString();
+  }
+
+  function parseFilters(params) {
+    return {
+      startDate: params.get('startDate') || '',
+      endDate: params.get('endDate') || '',
+      panoOnly: params.get('panoOnly') === 'true',
+    };
+  }
+
+  function parseLayerState(params) {
+    return {
+      points: params.get('points') === 'true',
+      signs: params.get('signs') === 'true',
+    };
+  }
+
+  function restoreFiltersFromParams(params) {
+    return parseFilters(params);
+  }
+
+  function restoreLayerStateFromParams(params) {
+    return parseLayerState(params);
+  }
+
+  function updateUrlFromState(filters, layerState, currentLocation, historyApi) {
+    const params = new URLSearchParams(currentLocation.search);
+
+    const filterParams = serializeFilters(filters);
+    const layerParams = serializeLayerState(layerState);
+
+    ['startDate', 'endDate', 'panoOnly'].forEach(k => {
+      if (filterParams[k]) {
+        params.set(k, filterParams[k]);
+      } else {
+        params.delete(k);
+      }
+    });
+
+    ['points', 'signs'].forEach(k => {
+      if (layerParams[k]) {
+        params.set(k, layerParams[k]);
+      } else {
+        params.delete(k);
+      }
+    });
+
+    const token = params.get('token');
+    if (!token || token === DEFAULT_TOKEN) {
+      params.delete('token');
+    }
+
+    const queryString = params.toString();
+    const pathname = currentLocation.pathname || '/';
+    const hash = currentLocation.hash || '';
+    const newUrl = queryString
+      ? pathname + '?' + queryString + hash
+      : pathname + hash;
+
+    const currentFull = pathname + currentLocation.search + hash;
+    if (newUrl !== currentFull && historyApi && historyApi.replaceState) {
+      historyApi.replaceState(null, '', newUrl);
+    }
+
+    return newUrl;
+  }
+
+  return {
+    serializeFilters,
+    serializeLayerState,
+    buildQueryString,
+    parseFilters,
+    parseLayerState,
+    restoreFiltersFromParams,
+    restoreLayerStateFromParams,
+    updateUrlFromState,
+  };
+})();
+
+// ─── TokenState: Token Update State Management ────────────────────────────────
+// 抽离为可测试的纯函数，支持传入依赖以便测试
+
+const TokenState = (function () {
+
+  function resetLayerState(layerState, getElementByIdFn) {
+    layerState.points = false;
+    layerState.signs = false;
+
+    if (getElementByIdFn) {
+      const btnPoints = getElementByIdFn('toggle-points');
+      const btnSigns = getElementByIdFn('toggle-signs');
+      if (btnPoints && btnPoints.dataset) btnPoints.dataset.active = 'false';
+      if (btnSigns && btnSigns.dataset) btnSigns.dataset.active = 'false';
+    }
+
+    return layerState;
+  }
+
+  function prepareTokenUpdate(options) {
+    const result = {
+      thumbCacheCleared: false,
+      loadedAttributionId: null,
+      activeImageId: null,
+      layerState: { points: false, signs: false },
+    };
+
+    if (options.thumbCache && typeof options.thumbCache.clear === 'function') {
+      options.thumbCache.clear();
+      result.thumbCacheCleared = true;
+    }
+
+    result.loadedAttributionId = null;
+    result.activeImageId = null;
+
+    if (options.layerState) {
+      resetLayerState(options.layerState, options.getElementById);
+      result.layerState = options.layerState;
+    }
+
+    return result;
+  }
+
+  return {
+    resetLayerState,
+    prepareTokenUpdate,
+  };
+})();
+
+// ─── URL Query State Management (应用层包装) ──────────────────────────────────
+
+function updateUrlFromState() {
+  return UrlState.updateUrlFromState(
+    activeFilters,
+    layerState,
+    window.location,
+    window.history
+  );
+}
+
+function restoreFiltersFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const restored = UrlState.restoreFiltersFromParams(params);
+  activeFilters.startDate = restored.startDate;
+  activeFilters.endDate = restored.endDate;
+  activeFilters.panoOnly = restored.panoOnly;
+
+  const panoCheckbox = document.getElementById('filter-pano-only');
+  if (panoCheckbox) panoCheckbox.checked = activeFilters.panoOnly;
+}
+
+function restoreLayerStateFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const restored = UrlState.restoreLayerStateFromParams(params);
+  layerState.points = restored.points;
+  layerState.signs = restored.signs;
+
+  const btnPoints = document.getElementById('toggle-points');
+  const btnSigns = document.getElementById('toggle-signs');
+
+  if (btnPoints) btnPoints.dataset.active = String(layerState.points);
+  if (btnSigns) btnSigns.dataset.active = String(layerState.signs);
+
+  if (layerState.points && map) addExtraLayer('points');
+  if (layerState.signs && map) addExtraLayer('signs');
+}
+
+function resetLayerState() {
+  layerState = TokenState.resetLayerState(layerState, document.getElementById.bind(document));
+}
+
+function updateDatePickersFromFilters() {
+  if (fpStart && activeFilters.startDate) {
+    fpStart.setDate(activeFilters.startDate, false);
+  }
+  if (fpEnd && activeFilters.endDate) {
+    fpEnd.setDate(activeFilters.endDate, false);
+  }
+  if (fpStart && activeFilters.endDate) {
+    fpStart.set('maxDate', activeFilters.endDate);
+  }
+  if (fpEnd && activeFilters.startDate) {
+    fpEnd.set('minDate', activeFilters.startDate);
+  }
 }
 
 // Auto-load with default token on startup
@@ -349,7 +581,11 @@ document.addEventListener('DOMContentLoaded', () => {
     tokenInput.value = urlToken;
     accessToken = urlToken;
   }
+
+  restoreFiltersFromUrl();
+
   initTabs();
+  bindLayerToggles();
   initMap();
 });
 
@@ -501,6 +737,8 @@ function onMapLoad() {
   bindMapEvents();
   bindLayerToggles();
   applyFiltersToLayers();
+  updateFiltersActiveState();
+  restoreLayerStateFromUrl();
   setStatus('ok', 'Map ready — click a green layer');
 }
 
@@ -586,6 +824,8 @@ function initDatePickers() {
       if (fpStart) fpStart.set('maxDate', dateStr || 'today');
     },
   });
+
+  updateDatePickersFromFilters();
 }
 
 function bindLayerToggles() {
@@ -608,6 +848,7 @@ function bindLayerToggles() {
       activeFilters.panoOnly  = document.getElementById('filter-pano-only').checked;
       applyFiltersToLayers();
       updateFiltersActiveState();
+      updateUrlFromState();
       filtersPanel.classList.remove('open');
       filtersToggle.dataset.active = 'false';
     });
@@ -620,6 +861,7 @@ function bindLayerToggles() {
       document.getElementById('filter-pano-only').checked = false;
       applyFiltersToLayers();
       updateFiltersActiveState();
+      updateUrlFromState();
       filtersPanel.classList.remove('open');
       filtersToggle.dataset.active = 'false';
     });
@@ -636,6 +878,8 @@ function toggleLayer(name) {
   } else {
     removeExtraLayer(name);
   }
+
+  updateUrlFromState();
 }
 
 function addExtraLayer(name) {

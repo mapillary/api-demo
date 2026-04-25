@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Api-Demo Regression Tests</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #e0e0e0;
+    }
+    h1 { color: #05CB63; }
+    h2 { color: #888; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-top: 30px; }
+    .test-suite {
+      background: #2a2a2a;
+      border-radius: 8px;
+      margin: 10px 0;
+      overflow: hidden;
+    }
+    .test-suite-header {
+      padding: 12px 16px;
+      background: #333;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .test-suite-header:hover { background: #3a3a3a; }
+    .test-suite-title { font-weight: 600; }
+    .test-suite-stats { font-size: 12px; color: #888; }
+    .test-cases { padding: 10px 0; }
+    .test-case {
+      padding: 8px 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      border-bottom: 1px solid #333;
+    }
+    .test-case:last-child { border-bottom: none; }
+    .test-icon {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      border-radius: 50%;
+      font-size: 12px;
+    }
+    .test-icon.pass { background: #05CB63; color: #fff; }
+    .test-icon.fail { background: #f87171; color: #fff; }
+    .test-icon.pending { background: #666; color: #ccc; }
+    .test-content { flex: 1; }
+    .test-name { font-weight: 500; }
+    .test-desc { font-size: 12px; color: #888; margin-top: 2px; }
+    .test-error {
+      margin-top: 6px;
+      padding: 8px;
+      background: rgba(248, 113, 113, 0.1);
+      border: 1px solid rgba(248, 113, 113, 0.3);
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      color: #f87171;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .summary {
+      margin-top: 30px;
+      padding: 16px;
+      background: #2a2a2a;
+      border-radius: 8px;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+    .summary-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .summary-label { font-size: 12px; color: #888; }
+    .summary-value { font-size: 24px; font-weight: bold; }
+    .summary-value.total { color: #888; }
+    .summary-value.pass { color: #05CB63; }
+    .summary-value.fail { color: #f87171; }
+    #run-all-btn {
+      background: #05CB63;
+      color: #fff;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    #run-all-btn:hover { background: #04a852; }
+    .collapsed .test-cases { display: none; }
+    .toggle-icon { transition: transform 0.2s; }
+    .collapsed .toggle-icon { transform: rotate(-90deg); }
+    pre { background: #222; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 13px; }
+    code { font-family: 'Consolas', 'Monaco', monospace; }
+    a { color: #05CB63; }
+  </style>
+</head>
+<body>
+  <h1>Api-Demo Regression Tests</h1>
+  <p>零依赖浏览器测试，直接在浏览器中打开此文件运行。</p>
+
+  <div class="summary">
+    <button id="run-all-btn">Run All Tests</button>
+    <div class="summary-item">
+      <div class="summary-label">Total</div>
+      <div class="summary-value total" id="total-count">0</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-label">Passed</div>
+      <div class="summary-value pass" id="pass-count">0</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-label">Failed</div>
+      <div class="summary-value fail" id="fail-count">0</div>
+    </div>
+  </div>
+
+  <div id="test-container"></div>
+
+  <h2>Usage</h2>
+  <pre><code># 方法 1: 直接在浏览器中打开
+# 双击 tests.html 或拖入浏览器
+
+# 方法 2: 使用本地服务器
+cd api-demo
+python -m http.server 8000
+# 然后访问 http://localhost:8000/tests.html</code></pre>
+
+  <h2>Test Coverage</h2>
+  <ul>
+    <li><strong>UrlState.serializeFilters</strong> - 筛选状态序列化</li>
+    <li><strong>UrlState.serializeLayerState</strong> - 图层状态序列化</li>
+    <li><strong>UrlState.parseFilters</strong> - 筛选状态反序列化</li>
+    <li><strong>UrlState.parseLayerState</strong> - 图层状态反序列化</li>
+    <li><strong>UrlState.buildQueryString</strong> - 构建查询字符串</li>
+    <li><strong>UrlState.updateUrlFromState</strong> - 更新 URL（模拟 history API）</li>
+    <li><strong>TokenState.resetLayerState</strong> - 重置图层状态</li>
+    <li><strong>TokenState.prepareTokenUpdate</strong> - 准备 token 更新</li>
+    <li><strong>组合场景</strong> - 状态恢复顺序、边界情况</li>
+  </ul>
+
+  <script src="test.js"></script>
+</body>
+</html>
