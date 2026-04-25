@@ -338,8 +338,23 @@ function applyToken() {
   accessToken = val;
   tokenGroup.classList.add('collapsed');
   tokenInput.value = '';
+
+  resetLayerState();
+  thumbCache.clear();
+  loadedAttributionId = null;
+  activeImageId = null;
+
   if (viewer) { viewer.remove(); viewer = null; }
   initMap();
+}
+
+function resetLayerState() {
+  layerState.points = false;
+  layerState.signs = false;
+  const btnPoints = document.getElementById('toggle-points');
+  const btnSigns = document.getElementById('toggle-signs');
+  if (btnPoints) btnPoints.dataset.active = 'false';
+  if (btnSigns) btnSigns.dataset.active = 'false';
 }
 
 // Auto-load with default token on startup
@@ -350,6 +365,7 @@ document.addEventListener('DOMContentLoaded', () => {
     accessToken = urlToken;
   }
   initTabs();
+  bindLayerToggles();
   initMap();
 });
 
@@ -499,7 +515,6 @@ function onMapLoad() {
   });
 
   bindMapEvents();
-  bindLayerToggles();
   applyFiltersToLayers();
   setStatus('ok', 'Map ready — click a green layer');
 }
