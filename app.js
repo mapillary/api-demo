@@ -168,14 +168,9 @@ function logApiCall(method, url, surface) {
   const now = new Date();
   const ts  = now.toTimeString().slice(0, 8);
 
-  // Split URL into path and query string for display
   const qIdx = url.indexOf('?');
   const displayPath   = qIdx >= 0 ? url.slice(0, qIdx) : url;
   const displayParams = qIdx >= 0 ? url.slice(qIdx) : '';
-  // Shorten the URL for display — strip the base
-  const shortPath = displayPath.replace('https://graph.mapillary.com', '').replace('https://tiles.mapillary.com', '') || displayPath;
-  // Redact access_token from displayed URL
-  const safeParams = displayParams.replace(/access_token=[^&]+/, 'access_token=…');
 
   const methodClass = method === 'TILES' ? 'method-tiles' : 'method-get';
   const surfaceLabel = surface || '';
@@ -184,12 +179,12 @@ function logApiCall(method, url, surface) {
     <div class="entry-row">
       <span class="entry-method ${methodClass}">${method}</span>
       <span class="entry-surface">${surfaceLabel}</span>
-      <span class="entry-url"><span class="url-path">${escHtml(shortPath)}</span><span class="url-params">${escHtml(safeParams)}</span></span>
+      <span class="entry-url" title="${escHtml(url)}"><span class="url-path">${escHtml(displayPath)}</span><span class="url-params">${escHtml(displayParams)}</span></span>
       <span class="entry-status status-pending" data-status>…</span>
       <span class="entry-time" data-time></span>
       <span class="entry-ts">${ts}</span>
     </div>
-    <div class="entry-body" data-body></div>`;
+    <div class="entry-body" data-body><div class="entry-fullurl">${escHtml(url)}</div></div>`;
 
   // Prepend so newest is at top
   consoleEntries.insertBefore(entry, consoleEntries.firstChild);
@@ -1517,42 +1512,11 @@ window.addEventListener('resize', () => {
     setTimeout(waitForIdleThenOpen, ANIM_MS + 50);
   }
 
-  function openNearestImage(lng, lat) {
-    // Use the map's rendered tile features to find the nearest image — more reliable than
-    // the Graph API bbox search which may return empty results due to token scope.
-    if (!map) return;
-    const center = map.project([lng, lat]);
-    // Query a generous pixel radius around the target point
-    const r = 120;
-    const features = map.queryRenderedFeatures(
-      [[ center.x - r, center.y - r ], [ center.x + r, center.y + r ]],
-      { layers: [LAYER_IMG] }
-    );
-    if (!features || features.length === 0) return;
-
-    // Pick the feature whose geometry is closest to the target lngLat
-    let best = null, bestDist = Infinity;
-    for (const f of features) {
-      const fId = f.properties && (f.properties.id || f.id);
-      if (!fId) continue;
-      // Apply active filters
-      if (activeFilters.panoOnly && !f.properties.is_pano) continue;
-      if (activeFilters.startDate) {
-        const ts = f.properties.captured_at;
-        if (ts && ts < new Date(activeFilters.startDate).getTime()) continue;
-      }
-      if (activeFilters.endDate) {
-        const ts = f.properties.captured_at;
-        if (ts && ts > new Date(activeFilters.endDate).getTime() + 86400000) continue;
-      }
-      const coords = f.geometry && f.geometry.coordinates;
-      if (!coords) continue;
-      const d = Math.hypot(coords[0] - lng, coords[1] - lat);
-      if (d < bestDist) { bestDist = d; best = { id: fId, coords }; }
-    }
-    if (best) {
-      openImageInViewer(String(best.id));
-    }
+  async function openNearestImage(lng, lat) {
+    const url = `${GRAPH_URL}/images?fields=id&lat=${lat}&lng=${lng}&radius=50&limit=1&access_token=${accessToken}`;
+    const json = await apiFetch(url, 'Geocoder', 'Radius search');
+    const img = json && json.data && json.data[0];
+    if (img) openImageInViewer(String(img.id));
   }
 
   function hideSuggestions() {
